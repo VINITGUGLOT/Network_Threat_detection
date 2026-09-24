@@ -87,7 +87,29 @@ Network/
 
 ## Model Performance
 
-_Add your accuracy, precision, recall, and F1-score results here from your evaluation on the CICIDS2017 test split._
+**Model Comparison**
+
+| Model | Accuracy |
+|---|---|
+| Random Forest | 99.84% |
+| XGBoost | 99.84% |
+
+**XGBoost — Classification Report**
+
+| Class | Precision | Recall | F1-score | Support |
+|---|---|---|---|---|
+| 0 | 1.00 | 1.00 | 1.00 | 58,890 |
+| 1 | 1.00 | 1.00 | 1.00 | 22,863 |
+| **Accuracy** | | | **1.00** | 81,753 |
+| **Macro avg** | 1.00 | 1.00 | 1.00 | 81,753 |
+| **Weighted avg** | 1.00 | 1.00 | 1.00 | 81,753 |
+
+**Confusion Matrix**
+
+```
+[[58798    92]
+ [   42 22821]]
+```
 
 ## Future Improvements
 
