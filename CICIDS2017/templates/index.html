@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Threat Detection Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #060b13;
+            --bg-side: #0b111e;
+            --bg-panel: #111a2e;
+            --bg-panel-hover: #16223b;
+            --accent-cyan: #00f0ff;
+            --accent-blue: #0072ff;
+            --color-benign: #00ff88;
+            --color-ddos: #ff4d4d;
+            --color-portscan: #ffd000;
+            --text-muted: #8ca3b8;
+            --border-glow: rgba(0, 240, 255, 0.15);
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg-main);
+            color: #ffffff;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: var(--transition-smooth);
+        }
+
+        /* =========================================
+        SIDEBAR
+        ========================================= */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: var(--bg-side);
+            padding: 30px 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .menu a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+            color: #a4b3c6;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            transition: var(--transition-smooth);
+        }
+
+        .menu a:hover,
+        .menu .active {
+            background: linear-gradient(90deg, var(--bg-panel) 0%, rgba(17, 26, 46, 0.4) 100%);
+            color: var(--accent-cyan);
+            box-shadow: inset 4px 0 0 var(--accent-cyan);
+        }
+
+        /* =========================================
+        MAIN CONTENT
+        ========================================= */
+        .main {
+            margin-left: 260px;
+            padding: 40px;
+            width: calc(100% - 260px);
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+        }
+
+        .topbar h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .live {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--color-benign);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        /* =========================================
+        CARDS SYSTEM
+        ========================================= */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--bg-panel);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0, 240, 255, 0.03) 0%, transparent 100%);
+            opacity: 0;
+            transition: var(--transition-smooth);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card h3 {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .card h1 {
+            font-size: 36px;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        #threats {
+            color: var(--color-ddos);
+            text-shadow: 0 0 15px rgba(255, 77, 77, 0.2);
+        }
+
+        /* =========================================
+        PANELS & INTERFACES
+        ========================================= */
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 25px;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* =========================================
+        SETTINGS CONFIGURATION MODULES
+        ========================================= */
+        .settings-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .settings-group {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .settings-group h3 {
+            font-size: 16px;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .setting-control {
+            margin-bottom: 15px;
+        }
+
+        .setting-control label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .settings-options-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .opt-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-main);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: #a4b3c6;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .opt-btn:hover {
+            border-color: var(--accent-cyan);
+            color: white;
+        }
+
+        .opt-btn.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: var(--accent-cyan);
+            color: #ffffff;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .settings-slider {
+            flex: 1;
+            accent-color: var(--accent-cyan);
+            background: var(--bg-main);
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .slider-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .alert-banner {
+            display: none;
+            background: rgba(255, 208, 0, 0.1);
+            border: 1px solid var(--color-portscan);
+            color: var(--color-portscan);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 15px;
+            animation: popupIn 0.3s ease;
+        }
+
+        .action-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* =========================================
+        ANIMATED VIEW SWITCHER
+        ========================================= */
+        .section {
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* =========================================
+        AI PREDICTION SECTION
+        ========================================= */
+        .ai-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .ai-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .ai-circle::after {
+            content: '';
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 2px dashed rgba(0, 240, 255, 0.3);
+            animation: rotate 20s linear infinite;
+        }
+
+        .ai-circle i {
+            font-size: 55px;
+            color: white;
+        }
+
+        .ai-title {
+            font-size: 26px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .ai-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 35px;
+            font-size: 15px;
+        }
+
+        .upload-area {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.08);
+            padding: 40px 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+            transition: var(--transition-smooth);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.01);
+        }
+
+        .upload-area input[type="file"] {
+            width: 100%;
+            padding: 15px;
+            background: var(--bg-main);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            color: #ffffff;
+            margin-bottom: 25px;
+            cursor: pointer;
+        }
+
+        .detect-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+            transition: var(--transition-smooth);
+        }
+
+        .detect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 240, 255, 0.4);
+        }
+
+        /* POPUP CONFIRMATION */
+        .upload-popup {
+            display: none;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--color-benign);
+            color: var(--color-benign);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            animation: popupIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* LIVE PREDICTION CARD */
+        .result-card {
+            margin-top: 35px;
+            background: var(--bg-main);
+            padding: 25px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: left;
+        }
+
+        .result-card h3 {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .result-text {
+            font-size: 30px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--accent-cyan);
+            letter-spacing: -0.5px;
+        }
+
+        .confidence-text {
+            font-size: 15px;
+            color: #a4b3c6;
+            margin-bottom: 12px;
+        }
+
+        /* NEW METADATA STYLES */
+        .meta-container {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .meta-item {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 12px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .meta-val {
+            color: #ffffff;
+        }
+
+        /* =========================================
+        THREAT LOGS & TIMELINES
+        ========================================= */
+        .log {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 4px solid var(--color-ddos);
+            padding: 16px 20px;
+            border-radius: 0 12px 12px 0;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 15px;
+            transition: var(--transition-smooth);
+            animation: inlineLogAppend 0.4s ease-out;
+        }
+
+        .log:hover {
+            background: rgba(255, 255, 255, 0.04);
+            transform: translateX(4px);
+        }
+
+        .log.portscan-log {
+            border-left-color: var(--color-portscan);
+        }
+        
+        .log.benign-log {
+            border-left-color: var(--color-benign);
+        }
+
+        /* =========================================
+        TABLE FORMATTING
+        ========================================= */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            padding: 16px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+            text-align: left;
+        }
+
+        table td {
+            padding: 16px;
+            font-size: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #e2e8f0;
+        }
+
+        table tbody tr {
+            transition: var(--transition-smooth);
+            animation: inlineRowAppend 0.4s ease-out;
+        }
+
+        table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+
+        /* =========================================
+        SETTINGS & TOGGLES
+        ========================================= */
+        .setting-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-btn:hover {
+            background: white;
+            color: black;
+        }
+
+        .setting-btn.primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border: none;
+        }
+        .setting-btn.primary:hover {
+            opacity: 0.9;
+            color: white;
+        }
+
+        /* =========================================
+        LIGHT THEME OVERRIDES
+        ========================================= */
+        body.light-theme {
+            --bg-main: #f4f7fb;
+            --bg-side: #ffffff;
+            --bg-panel: #ffffff;
+            --text-muted: #64748b;
+            color: #1e293b;
+        }
+
+        body.light-theme .card h1, 
+        body.light-theme .panel h2,
+        body.light-theme table td,
+        body.light-theme .slider-val,
+        body.light-theme .meta-val,
+        body.light-theme .setting-control label {
+            color: #1e293b;
+        }
+
+        body.light-theme .card,
+        body.light-theme .panel,
+        body.light-theme .sidebar {
+            border-color: rgba(0,0,0,0.06);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        body.light-theme .log,
+        body.light-theme .settings-group,
+        body.light-theme .opt-btn {
+            background: #f8fafc;
+        }
+
+        body.light-theme .setting-btn {
+            color: #1e293b;
+            border-color: rgba(0,0,0,0.15);
+        }
+        body.light-theme .setting-btn:hover {
+            background: #1e293b;
+            color: white;
+        }
+
+        /* =========================================
+        ANIMATION SUITE
+        ========================================= */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.1); }
+            100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes popupIn {
+            0% { opacity: 0; transform: scale(0.9) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        @keyframes inlineLogAppend {
+            from { opacity: 0; transform: translateX(-15px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes inlineRowAppend {
+            from { opacity: 0; background: rgba(0, 240, 255, 0.1); }
+            to { opacity: 1; background: transparent; }
+        }
+
+        /* =========================================
+        RESPONSIVE DESIGN
+        ========================================= */
+        @media(max-width:1150px) {
+            .cards { grid-template-columns: 1fr; }
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        @media(max-width:768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                padding: 20px;
+            }
+            body { flex-direction: column; }
+            .main { margin-left: 0; width: 100%; padding: 20px; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved"></i> AI Secure
+        </div>
+        <div class="menu">
+            <a href="#" class="nav active" onclick="showSection('dashboard',this)">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </a>
+            <a href="#" class="nav" onclick="showSection('threat',this)">
+                <i class="fa-solid fa-triangle-exclamation"></i> Threat Analytics
+            </a>
+            <a href="#" class="nav" onclick="showSection('prediction',this)">
+                <i class="fa-solid fa-brain"></i> AI Prediction
+            </a>
+            <a href="#" class="nav" onclick="showSection('packet',this)">
+                <i class="fa-solid fa-network-wired"></i> Packet Inspection
+            </a>
+            <a href="#" class="nav" onclick="showSection('settings',this)">
+                <i class="fa-solid fa-gear"></i> Settings
+            </a>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="topbar">
+            <h1>AI Threat Detection Network</h1>
+            <div class="live" id="systemLiveStatus"><span>●</span> LIVE TELEMETRY</div>
+        </div>
+
+        <div id="dashboard" class="section">
+            <div class="cards">
+                <div class="card">
+                    <h3>Total Packets Evaluated</h3>
+                    <h1 id="packets">2.8M</h1>
+                </div>
+                <div class="card">
+                    <h3>Threats Mitigated</h3>
+                    <h1 id="threats">47</h1>
+                </div>
+                <div class="card">
+                    <h3>Firewall Core Status</h3>
+                    <h1 id="coreStatusDisplay" style="color: #00ff88;">OPERATIONAL</h1>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="panel">
+                    <h2><i class="fa-solid fa-chart-line" style="color:var(--accent-cyan)"></i> Network Traffic Flow</h2>
+                    <canvas id="trafficChart"></canvas>
+                </div>
+                <div class="panel">
+                    <h2><i class="fa-solid fa-chart-pie" style="color:var(--color-portscan)"></i> Threat Profile Matrix</h2>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="threat" class="section hidden">
+            <div class="panel">
+                <h2>Threat Analytics Real-time Feed</h2>
+                <div id="analyticsFeedContainer">
+                    <div class="log">
+                        <i class="fa-solid fa-circle-exclamation"></i> Critical: DDoS attack signature detected routing from source 198.51.100.1
+                    </div>
+                    <div class="log portscan-log">
+                        <i class="fa-solid fa-eye"></i> Warning: PortScan reconnaissance sweep targeting localized server stacks
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="prediction" class="section hidden">
+            <div class="panel">
+                <h2>Threat Detection Engine</h2>
+                <div class="ai-container">
+                    <div class="ai-circle">
+                        <i class="fa-solid fa-microchip"></i>
+                    </div>
+                    <h2 class="ai-title">Neural Engine Diagnostic</h2>
+                    <p class="ai-subtitle">Drop or upload parsed core Network Traffic Data (.csv format)</p>
+
+                    <div class="upload-area">
+                        <input type="file" id="csvFile" accept=".csv">
+                        <div id="uploadPopup" class="upload-popup">
+                            <i class="fa-solid fa-circle-check"></i> File Ingested Into RAM Successfully
+                        </div>
+                        <button class="detect-btn" onclick="predictThreat()">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Classify Dataset Metrics
+                        </button>
+
+                        <div class="result-card">
+                            <h3>Classification Yield</h3>
+                            <div id="predictionResult" class="result-text">Awaiting Vector Feed...</div>
+                            <div id="confidenceText" class="confidence-text">Algorithmic Confidence: --</div>
+                            
+                            <div class="meta-container">
+                                <div class="meta-item">
+                                    <span class="meta-label">Threat Severity</span>
+                                    <span id="severityText" class="meta-val">--</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Automated System Recommendation</span>
+                                    <span id="recommendationText" class="meta-val">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="packet" class="section hidden">
+            <div class="panel">
+                <h2>Granular Deep Packet Inspection (DPI) Logs</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Origin Node</th>
+                            <th>Target Host Address</th>
+                            <th>Analysis State</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packetTableBody">
+                        <tr>
+                            <td>12:20:41</td>
+                            <td>192.168.0.1</td>
+                            <td>10.0.0.5</td>
+                            <td><span class="status-badge" style="background: rgba(0,255,136,0.12); color: var(--color-benign)">BENIGN</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="settings" class="section hidden">
+            <div class="panel">
+                <h2>System Configuration Panel</h2>
+                
+                <div class="settings-layout">
+                    <div class="settings-group">
+                        <h3>Defensive Policy Engine</h3>
+                        <div class="setting-control">
+                            <label>Active Guard Mode</label>
+                            <div class="settings-options-row">
+                                <button class="opt-btn active" id="btnModeStandard" onclick="setDefenseMode('Standard')">Standard</button>
+                                <button class="opt-btn" id="btnModeHigh" onclick="setDefenseMode('High-Security')">High-Sec</button>
+                                <button class="opt-btn" id="btnModeAttack" onclick="setDefenseMode('Under Attack')">Mitigation</button>
+                            </div>
+                            <div class="alert-banner" id="policyAlertBanner">
+                                Defensive state transitioned. Adaptive firewalls deployed.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>Telemetry & ML Tuning</h3>
+                        <div class="setting-control">
+                            <label>Telemetry Tick Rate (Data Feed Refresh)</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="settings-slider" id="tickRateSlider" min="500" max="5000" step="500" value="2000" oninput="updateTickRate(this.value)">
+                                <span class="slider-val" id="tickRateVal">2.0s</span>
+                            </div>
+                        </div>
+                        <div class="setting-control">
+                            <label>AI Sensitivity Sensitivity Threshold</label>
+                            <div class="slider-wrapper">
+                                <input type="range" class="settings-slider" id="sensitivitySlider" min="50" max="99" step="1" value="75" oninput="updateSensitivity(this.value)">
+                                <span class="slider-val" id="sensitivityVal">75%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group" style="width: 100%;">
+                    <h3>Platform Spectrum & System Operations</h3>
+                    <div class="action-container">
+                        <button class="setting-btn" onclick="toggleTheme()">
+                            <i class="fa-solid fa-circle-half-stroke"></i> Swap Display Spectrum
+                        </button>
+                        <button class="setting-btn primary" onclick="exportConfig()">
+                            <i class="fa-solid fa-download"></i> Export Telemetry JSON Config
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ACTIVE CONTROL STATE VARIABLES */
+        let activeDefenseMode = 'Standard';
+        let telemetryIntervalTime = 2000;
+        let aiConfidenceThreshold = 75;
+        let packetCount = 2800000;
+        let threatCount = 47;
+        let liveTickerReference;
+
+        /* POOLS FOR GENERATING DYNAMIC REAL-TIME DATA */
+        const mockIPs = ['192.168.1.45', '10.0.0.12', '172.16.254.1', '198.51.100.5', '203.0.113.4', '185.220.101.6', '45.133.1.20', '192.168.0.104'];
+        const targetIPs = ['10.0.0.5', '10.0.0.8', '10.0.0.9', '192.168.1.1'];
+        const threatLogTemplates = [
+            { type: 'DDoS', text: 'Critical: High-volume flood vector target validation match near node [IP]', class: 'ddos-log', icon: 'fa-circle-exclamation' },
+            { type: 'PortScan', text: 'Warning: Host discovery mapping ping array observed from node [IP]', class: 'portscan-log', icon: 'fa-eye' },
+            { type: 'DDoS', text: 'Critical: Anomalous synchronization payload threshold breached from source [IP]', class: 'ddos-log', icon: 'fa-circle-exclamation' }
+        ];
+
+        /* NAVIGATION ROUTER */
+        function showSection(id, element) {
+            document.querySelectorAll('.section').forEach(section => section.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.nav').forEach(nav => nav.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        /* INGESTION CONFIRM TRIGGER */
+        document.getElementById("csvFile").addEventListener("change", function() {
+            if (this.files.length > 0) {
+                document.getElementById("uploadPopup").style.display = "block";
+            }
+        });
+
+        /* THEME CONTROLLER */
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            trafficChart.options.plugins.legend.labels.color = isLight ? '#1e293b' : 'white';
+            trafficChart.options.scales.x.ticks.color = isLight ? '#64748b' : 'white';
+            trafficChart.options.scales.y.ticks.color = isLight ? '#64748b' : 'white';
+            trafficChart.update();
+
+            pieChart.options.plugins.legend.labels.color = isLight ? '#1e293b' : 'white';
+            pieChart.update();
+        }
+
+        /* DEFENSIVE MODE CONFIGURATION WORKER */
+        function setDefenseMode(mode) {
+            activeDefenseMode = mode;
+            document.querySelectorAll('.opt-btn').forEach(btn => btn.classList.remove('active'));
+            
+            const displayEl = document.getElementById('coreStatusDisplay');
+            const banner = document.getElementById('policyAlertBanner');
+            banner.style.display = 'block';
+
+            if(mode === 'Standard') {
+                document.getElementById('btnModeStandard').classList.add('active');
+                displayEl.innerHTML = "OPERATIONAL";
+                displayEl.style.color = "#00ff88";
+                banner.style.background = "rgba(0, 255, 136, 0.05)";
+                banner.style.borderColor = "var(--color-benign)";
+                banner.style.color = "var(--color-benign)";
+                banner.style.display = 'none';
+            } else if(mode === 'High-Security') {
+                document.getElementById('btnModeHigh').classList.add('active');
+                displayEl.innerHTML = "ARMED DEEP INSPECTION";
+                displayEl.style.color = "var(--color-portscan)";
+                banner.style.background = "rgba(255, 208, 0, 0.05)";
+                banner.style.borderColor = "var(--color-portscan)";
+                banner.style.color = "var(--color-portscan)";
+                banner.innerHTML = "Deep packet screening profile forced globally. AI analytics sensitivity increased.";
+            } else if(mode === 'Under Attack') {
+                document.getElementById('btnModeAttack').classList.add('active');
+                displayEl.innerHTML = "MITIGATION INTERACTION ACTIVE";
+                displayEl.style.color = "var(--color-ddos)";
+                banner.style.background = "rgba(255, 77, 77, 0.05)";
+                banner.style.borderColor = "var(--color-ddos)";
+                banner.style.color = "var(--color-ddos)";
+                banner.innerHTML = "Emergency hardware isolation filters active. Rate limiting active nodes immediately.";
+            }
+        }
+
+        /* TELEMETRY SLIDER UPDATER */
+        function updateTickRate(val) {
+            telemetryIntervalTime = parseInt(val);
+            document.getElementById('tickRateVal').innerHTML = (val / 1000).toFixed(1) + 's';
+            setupTelemetryEngine(); 
+        }
+
+        /* SENSITIVITY SLIDER UPDATER */
+        function updateSensitivity(val) {
+            aiConfidenceThreshold = parseInt(val);
+            document.getElementById('sensitivityVal').innerHTML = val + '%';
+        }
+
+        /* LIVE TELEMETRY LOOP ENGINE (NOW TOTALLY DYNAMIC) */
+        function setupTelemetryEngine() {
+            if(liveTickerReference) clearInterval(liveTickerReference);
+            
+            liveTickerReference = setInterval(() => {
+                let multiFactor = activeDefenseMode === 'Under Attack' ? 4 : 1;
+                let baselineRoll = Math.random();
+                
+                // 1. Packet counter update logic
+                packetCount += Math.floor(Math.random() * 1200) * multiFactor;
+                document.getElementById("packets").innerHTML = (packetCount / 1000000).toFixed(2) + "M";
+
+                // 2. State-driven dynamic logic roll
+                let timestamp = new Date().toLocaleTimeString();
+                let randomOrigin = mockIPs[Math.floor(Math.random() * mockIPs.length)];
+                let randomTarget = targetIPs[Math.floor(Math.random() * targetIPs.length)];
+                
+                let assignedState = "BENIGN";
+                // Increase malicious likelihood drastically if mitigation mode is active
+                let threatChance = activeDefenseMode === 'Under Attack' ? 0.45 : 0.82; 
+
+                if (baselineRoll > threatChance) {
+                    threatCount++;
+                    document.getElementById("threats").innerHTML = threatCount;
+                    assignedState = Math.random() > 0.6 ? "PortScan" : "DDoS";
+                    
+                    // Push dynamic alert to Threat Analytics page
+                    generateDynamicThreatLog(assignedState, randomOrigin);
+                }
+
+                // Push dynamic packet row to Packet Inspection page
+                generateDynamicPacketRow(timestamp, randomOrigin, randomTarget, assignedState);
+                
+            }, telemetryIntervalTime);
+        }
+
+        /* INJECT LOG TO THREAT ANALYTICS FEED */
+        function generateDynamicThreatLog(type, sourceIp) {
+            const container = document.getElementById('analyticsFeedContainer');
+            // Filter patterns based on incoming state assignment
+            const selectionPool = threatLogTemplates.filter(t => t.type === type);
+            const template = selectionPool[Math.floor(Math.random() * selectionPool.length)];
+            
+            const logElement = document.createElement('div');
+            logElement.className = `log ${template.class}`;
+            logElement.innerHTML = `<i class="fa-solid ${template.icon}"></i> ${template.text.replace('[IP]', sourceIp)}`;
+            
+            // Keep container clean by limiting UI elements to 8 entries maximum
+            if (container.children.length >= 8) {
+                container.removeChild(container.lastChild);
+            }
+            container.insertBefore(logElement, container.firstChild);
+        }
+
+        /* INJECT ROW TO GRANULAR DEEP PACKET INSPECTION TABLE */
+        function generateDynamicPacketRow(time, src, dest, state) {
+            const tableBody = document.getElementById('packetTableBody');
+            const row = document.createElement('tr');
+            
+            let colorVar = 'var(--color-benign)';
+            let bgOpacity = 'rgba(0,255,136,0.12)';
+            if (state === 'DDoS') { colorVar = 'var(--color-ddos)'; bgOpacity = 'rgba(255,77,77,0.12)'; }
+            if (state === 'PortScan') { colorVar = 'var(--color-portscan)'; bgOpacity = 'rgba(255,208,0,0.12)'; }
+
+            row.innerHTML = `
+                <td>${time}</td>
+                <td>${src}</td>
+                <td>${dest}</td>
+                <td><span class="status-badge" style="background: ${bgOpacity}; color: ${colorVar}">${state}</span></td>
+            `;
+
+            if (tableBody.children.length >= 10) {
+                tableBody.removeChild(tableBody.lastChild);
+            }
+            tableBody.insertBefore(row, tableBody.firstChild);
+        }
+
+        /* CONFIG FILE EXPORTER */
+        function exportConfig() {
+            const currentConfigState = {
+                timestamp: new Date().toISOString(),
+                firewall_mode: activeDefenseMode,
+                telemetry_loop_ms: telemetryIntervalTime,
+                ai_sensitivity_bar: aiConfidenceThreshold,
+                total_packets_captured: packetCount,
+                threat_count_detected: threatCount
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentConfigState, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `AISecure_Config_${Math.floor(Date.now()/1000)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        /* TRAFFIC GRAPH ENGINE */
+        const trafficCtx = document.getElementById('trafficChart');
+        const trafficChart = new Chart(trafficCtx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Bandwidth Packets Influx',
+                    data: [12, 19, 8, 15, 22, 18, 30],
+                    borderColor: '#00f0ff',
+                    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00f0ff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: 'white', font: { family: 'Segoe UI' } } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: 'white' } },
+                    y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'white' } }
+                }
+            }
+        });
+
+        /* PIE CHART ENGINE */
+        const pieCtx = document.getElementById('pieChart');
+        const pieChart = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['BENIGN', 'DDoS', 'PortScan'],
+                datasets: [{
+                    data: [70, 20, 10],
+                    backgroundColor: ['#00ff88', '#ff4d4d', '#ffd000'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '75%',
+                plugins: { legend: { position: 'bottom', labels: { color: 'white', padding: 20, font: { family: 'Segoe UI' } } } }
+            }
+        });
+
+        /* PROJECTION ML PIPELINE BRIDGE */
+        async function predictThreat() {
+            const fileInput = document.getElementById("csvFile");
+            if (fileInput.files.length === 0) {
+                alert("Please pipeline a valid CSV array.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const response = await fetch("/predict", { method: "POST", body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById("predictionResult").innerHTML = data.error;
+                    document.getElementById("predictionResult").style.color = "var(--color-ddos)";
+                    document.getElementById("severityText").innerHTML = "Error";
+                    document.getElementById("recommendationText").innerHTML = "--";
+                    return;
+                }
+
+                if (data.confidence < aiConfidenceThreshold) {
+                    document.getElementById("predictionResult").innerHTML = "SUSPICIOUS UNCERTAIN TRAFFIC";
+                    document.getElementById("predictionResult").style.color = "var(--color-portscan)";
+                    document.getElementById("confidenceText").innerHTML = `Confidence: ${data.confidence}% (Below Settings Filter threshold of ${aiConfidenceThreshold}%)`;
+                    document.getElementById("severityText").innerHTML = data.severity ? data.severity : "UNCERTAIN";
+                    document.getElementById("recommendationText").innerHTML = data.recommendation ? data.recommendation : "Review manually via Packet Inspection.";
+                    return;
+                }
+
+                document.getElementById("predictionResult").innerHTML = data.attack;
+                document.getElementById("confidenceText").innerHTML = "Algorithmic Confidence: " + data.confidence + "%";
+                document.getElementById("severityText").innerHTML = data.severity ? data.severity : "--";
+                document.getElementById("recommendationText").innerHTML = data.recommendation ? data.recommendation : "--";
+
+                if (data.attack.toUpperCase().includes("BENIGN")) {
+                    document.getElementById("predictionResult").style.color = "var(--color-benign)";
+                } else if (data.attack.toUpperCase().includes("DDoS")) {
+                    document.getElementById("predictionResult").style.color = "var(--color-ddos)";
+                } else {
+                    document.getElementById("predictionResult").style.color = "var(--color-portscan)";
+                }
+            } catch (error) {
+                document.getElementById("predictionResult").innerHTML = "Execution Pipeline Faulted";
+                document.getElementById("predictionResult").style.color = "var(--color-ddos)";
+                document.getElementById("severityText").innerHTML = "CRITICAL FAILURE";
+                document.getElementById("recommendationText").innerHTML = "Check local backend endpoint routing architecture.";
+            }
+        }
+
+        // Initialize execution on runtime launch
+        setupTelemetryEngine();
+    </script>
+</body>
+
+</html>

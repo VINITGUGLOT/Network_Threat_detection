@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# CICIDS2017 raw datasets
+CICIDS2017/*.csv
+CICIDS2017/uploads/*.csv
+
+# Generated NumPy datasets
+*.npy
+
+# Temporary uploads
+CICIDS2017/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
